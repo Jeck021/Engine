@@ -329,7 +329,6 @@
       };
 
       const refinePrompt = async () => {
-        if (!apiKey) { setStatus("Set API Key in code first."); return; }
         if (!prompt) { setStatus("Enter a prompt first ✨"); return; }
         setIsRefining(true);
         setStatus("✨ Magic Refiner active...");
@@ -357,7 +356,6 @@
       };
 
       const handleProcess = async () => {
-        if (!apiKey) { setStatus("Set API Key in index.html"); return; }
         if (!prompt) { setStatus("Please enter a prompt first."); return; }
         if (activeShots.length < 4) { setStatus("Select at least 4 camera shots!"); return; }
         setIsGenerating(true);
