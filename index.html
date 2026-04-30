@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SKPG Engine - Smart Prompt Generator by Jeck</title>
-  <!-- CDNs for Netlify standalone operation -->
+  <!-- CDNs for Standalone Deployment (Netlify/Vercel compatible) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Load React FIRST -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -45,8 +45,8 @@
     const { useState, useEffect, useRef } = React;
     
     /**
-     * Optimized Icon Component
-     * Handles the core lucide.js SVG generation safely
+     * Optimized Icon Component for Browser Compatibility
+     * Ensures icons render correctly without React-specific library conflicts
      */
     const Icon = ({ name, size = 16, className = "" }) => {
       const containerRef = useRef(null);
@@ -54,7 +54,6 @@
       useEffect(() => {
         if (containerRef.current && window.lucide) {
           containerRef.current.innerHTML = '';
-          
           const iconName = name.charAt(0).toLowerCase() + name.slice(1);
           const iconData = window.lucide.icons[iconName] || window.lucide.icons.helpCircle;
           
@@ -75,7 +74,7 @@
       return <span ref={containerRef} className="inline-flex items-center justify-center pointer-events-none" />;
     };
 
-    const apiKey = ""; // Environment provides key at runtime
+    const apiKey = ""; // Runtime-provided key
 
     const STYLES = {
       corona: {
@@ -325,16 +324,15 @@
         const maskBase64 = isInpaintMode ? getMaskData() : null;
 
         /**
-         * Fast Rendering Optimization + Auto-Connectivity:
-         * Automatically binds Master Prompt, Render Engine, Season, and Shot Type
-         * into each individual variation request.
+         * Fast Rendering Optimization + High Structural Accuracy:
+         * Automatically binds choices (Style, Season, Shot) to the master prompt.
          */
         const processVariation = async (idx) => {
-          // Select 1 of the 4 required shots for this specific index
+          // Assign each variation one of the 4 required shots
           const shotKey = activeShots[idx % activeShots.length];
           const shotSuffix = SHOT_TYPES[shotKey].suffix;
           
-          // Connect all choices to the master prompt automatically
+          // Connect all choices to the master prompt
           const currentFullPrompt = `${prompt}, ${seasonSuffix}, ${shotSuffix}, ${styleSuffix}`;
           
           try {
@@ -342,8 +340,8 @@
             if (selectedImage) {
               const parts = [
                 { text: isInpaintMode 
-                    ? `STRICT INSTRUCTION: Only modify masked area. Maintain accuracy for the rest. Replace with: ${currentFullPrompt}. Season: ${SEASONS[activeSeason].name}. Style: ${STYLES[activeStyle].name}.`
-                    : `STRICT INSTRUCTION: Maintain architectural form of provided image. Apply: ${currentFullPrompt}. Perspective: ${SHOT_TYPES[shotKey].name}. Engine: ${STYLES[activeStyle].name}.` 
+                    ? `STRICT INSTRUCTION: Only modify masked area. Maintain 100% architectural accuracy for the rest. Application: ${currentFullPrompt}. Season: ${SEASONS[activeSeason].name}. Style: ${STYLES[activeStyle].name}.`
+                    : `STRICT INSTRUCTION: Maintain exact architectural form, layout, and building geometry of original image. Apply style: ${currentFullPrompt}. Perspective: ${SHOT_TYPES[shotKey].name}. Engine: ${STYLES[activeStyle].name}.` 
                 },
                 { inlineData: { mimeType: "image/png", data: selectedImage } }
               ];
