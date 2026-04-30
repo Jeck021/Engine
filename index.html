@@ -38,39 +38,57 @@
     }
   </style>
 </head>
-<body class="bg-slate-950">
+<body class="bg-slate-950 text-slate-100">
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
     
+    /**
+     * Optimized Icon Component for Browser Compatibility
+     * Ensures icons render correctly on Vercel/Netlify without conflicts
+     */
     const Icon = ({ name, size = 16, className = "" }) => {
       const containerRef = useRef(null);
 
       useEffect(() => {
-        if (containerRef.current && window.lucide) {
-          containerRef.current.innerHTML = '';
-          const iconName = name.charAt(0).toLowerCase() + name.slice(1);
-          const iconData = window.lucide.icons[iconName] || window.lucide.icons.helpCircle;
-          
-          if (iconData) {
-            const svg = window.lucide.createSvg(iconData, {
-              width: size,
-              height: size,
-              class: className,
-              'stroke-width': 2,
-              stroke: 'currentColor',
-              fill: 'none'
-            });
-            containerRef.current.appendChild(svg);
+        const renderIcon = () => {
+          if (containerRef.current && window.lucide) {
+            containerRef.current.innerHTML = '';
+            const iconName = name.charAt(0).toLowerCase() + name.slice(1);
+            const iconData = window.lucide.icons[iconName] || window.lucide.icons.helpCircle;
+            
+            if (iconData) {
+              const svg = window.lucide.createSvg(iconData, {
+                width: size,
+                height: size,
+                class: className,
+                'stroke-width': 2,
+                stroke: 'currentColor',
+                fill: 'none'
+              });
+              containerRef.current.appendChild(svg);
+            }
           }
+        };
+
+        renderIcon();
+        // Fallback for slower network loading
+        if (!window.lucide) {
+          const interval = setInterval(() => {
+            if (window.lucide) {
+              renderIcon();
+              clearInterval(interval);
+            }
+          }, 100);
+          return () => clearInterval(interval);
         }
       }, [name, size, className]);
 
       return <span ref={containerRef} className="inline-flex items-center justify-center pointer-events-none" />;
     };
 
-    const apiKey = ""; // Runtime-provided key
+    const apiKey = ""; // Set your API Key here for standalone Vercel deployment
 
     const STYLES = {
       corona: {
@@ -183,25 +201,32 @@
       const [activeTab, setActiveTab] = useState('generate');
       const [status, setStatus] = useState("");
       
-      const audioRef = useRef(null);
+      const prevSettings = useRef({ style: activeStyle, season: activeSeason, shots: activeShots });
 
       /**
        * AUTOMATIC CONNECTIVITY LOGIC:
-       * Syncs Render Engine, Season, and the primary Camera Shot to the Master Prompt.
+       * Syncs Render Engine, Season, and Shot settings into the prompt automatically
+       * while allowing for manual user edits.
        */
       useEffect(() => {
-        const styleText = STYLES[activeStyle]?.promptSuffix || "";
-        const seasonText = SEASONS[activeSeason]?.suffix || "";
-        // Use the first active shot as the primary display shot in the prompt
-        const shotText = activeShots.length > 0 ? SHOT_TYPES[activeShots[0]]?.suffix : "";
-        
-        let composite = userSubject;
-        if (shotText) composite += `, ${shotText}`;
-        if (seasonText) composite += `, ${seasonText}`;
-        if (styleText) composite += `, ${styleText}`;
-        
-        setPrompt(composite);
-      }, [activeStyle, activeSeason, activeShots, userSubject]);
+        const settingsChanged = prevSettings.current.style !== activeStyle || 
+                                prevSettings.current.season !== activeSeason ||
+                                JSON.stringify(prevSettings.current.shots) !== JSON.stringify(activeShots);
+
+        if (settingsChanged) {
+          const styleText = STYLES[activeStyle]?.promptSuffix || "";
+          const seasonText = SEASONS[activeSeason]?.suffix || "";
+          const shotText = activeShots.length > 0 ? SHOT_TYPES[activeShots[0]]?.suffix : "";
+          
+          let composite = userSubject;
+          if (shotText) composite += `, ${shotText}`;
+          if (seasonText) composite += `, ${seasonText}`;
+          if (styleText) composite += `, ${styleText}`;
+          
+          setPrompt(composite);
+          prevSettings.current = { style: activeStyle, season: activeSeason, shots: activeShots };
+        }
+      }, [activeStyle, activeSeason, activeShots]);
 
       const fetchWithRetry = async (url, options, retries = 5) => {
         for (let i = 0; i < retries; i++) {
@@ -209,11 +234,11 @@
             const response = await fetch(url, options);
             if (response.ok) return await response.json();
             const errBody = await response.json();
-            throw new Error(errBody.error?.message || "API Error");
+            throw new Error(errBody.error?.message || "Internal API Error");
           } catch (err) {
             if (i === retries - 1) throw err;
+            await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
           }
-          await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
         }
       };
 
@@ -304,11 +329,12 @@
       };
 
       const refinePrompt = async () => {
+        if (!apiKey) { setStatus("Set API Key in code first."); return; }
         if (!prompt) { setStatus("Enter a prompt first ✨"); return; }
         setIsRefining(true);
-        setStatus("✨ Magic Refiner is active...");
+        setStatus("✨ Magic Refiner active...");
         try {
-          const systemPrompt = "You are an expert architectural visualization prompt engineer. Output ONLY the refined prompt text.";
+          const systemPrompt = "You are an expert architectural visualization prompt engineer. Output ONLY the refined text.";
           const userQuery = `Refine this prompt for a ${STYLES[activeStyle].name} render: ${prompt}`;
           const result = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
             method: 'POST',
@@ -324,24 +350,24 @@
             setStatus("✨ Prompt refined!"); 
           }
         } catch (error) { 
-          setStatus("Refinement error."); 
+          setStatus("Refinement failed."); 
         } finally { 
           setIsRefining(false); 
         }
       };
 
       const handleProcess = async () => {
+        if (!apiKey) { setStatus("Set API Key in index.html"); return; }
         if (!prompt) { setStatus("Please enter a prompt first."); return; }
         if (activeShots.length < 4) { setStatus("Select at least 4 camera shots!"); return; }
         setIsGenerating(true);
-        setStatus(`Initialising Quad-Output sequence...`);
+        setStatus(`Initialising Quad-Engine on Vercel...`);
         setGeneratedImages([null, null, null, null]); 
         setFocusedImageIdx(0);
         
         const maskBase64 = isInpaintMode ? getMaskData() : null;
 
         const processVariation = async (idx) => {
-          // Cycle through the selected camera shots for the 4 slots
           const shotKey = activeShots[idx % activeShots.length];
           const shotSuffix = SHOT_TYPES[shotKey].suffix;
           const currentFullPrompt = `${prompt}, ${shotSuffix}`;
@@ -351,8 +377,8 @@
             if (selectedImage) {
               const parts = [
                 { text: isInpaintMode 
-                    ? `STRICT INSTRUCTION: Only modify masked area. Maintain 100% structural accuracy for the rest. Apply: ${currentFullPrompt}. Season: ${SEASONS[activeSeason].name}. Style: ${STYLES[activeStyle].name}.`
-                    : `STRICT INSTRUCTION: Maintain exact architectural form, layout, and building geometry of the provided image. DO NOT change the building shape. Apply: ${currentFullPrompt}. Perspective: ${SHOT_TYPES[shotKey].name}. Engine: ${STYLES[activeStyle].name}.` 
+                    ? `STRICT INSTRUCTION: Only modify masked area. Maintain accuracy for the rest. Apply: ${currentFullPrompt}.`
+                    : `STRICT INSTRUCTION: Maintain exact architectural form, layout, and building geometry. Apply style: ${currentFullPrompt}. Perspective: ${SHOT_TYPES[shotKey].name}.` 
                 },
                 { inlineData: { mimeType: "image/png", data: selectedImage } }
               ];
@@ -402,7 +428,7 @@
           ]);
           setStatus("Quad-rendering complete!");
         } catch (error) { 
-          setStatus("Rendering failed. Verify API Key."); 
+          setStatus("Rendering failed. Check API Key / CORS."); 
         } finally { 
           setIsGenerating(false); 
         }
@@ -495,7 +521,7 @@
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Camera Shot Type</label>
                          </div>
                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${activeShots.length < 4 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-                            {String(activeShots.length)}/4
+                            {String(activeShots.length)}/4 Selected
                          </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -544,7 +570,7 @@
                         onChange={(e) => {
                           const val = e.target.value;
                           setPrompt(val);
-                          // Heuristic: update userSubject based on edit
+                          // Heuristic: update core subject only from the beginning of the manual edit
                           const parts = val.split(',');
                           if (parts.length > 0) setUserSubject(parts[0].trim());
                         }} 
@@ -561,7 +587,7 @@
                   {status && (
                     <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl flex items-center gap-2">
                       <Icon name="Info" className="w-4 h-4 text-blue-400 shrink-0" />
-                      <p className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">{String(status)}</p>
+                      <p className="text-[10px] text-blue-300 font-bold uppercase tracking-widest text-wrap">{String(status)}</p>
                     </div>
                   )}
                 </div>
@@ -599,9 +625,10 @@
                           ))}
                         </div>
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center opacity-10 animate-pulse">
+                        <div className="w-full h-full flex flex-col items-center justify-center opacity-10 animate-pulse text-center">
                           <Icon name="Cpu" className="w-24 h-24 mb-6" />
                           <p className="text-2xl font-black uppercase tracking-[0.5em]">Awaiting Instruction</p>
+                          <p className="text-[10px] text-slate-600 uppercase tracking-widest mt-2 font-bold">Vercel Pipeline Ready</p>
                         </div>
                       )}
                     </div>
@@ -624,13 +651,13 @@
                       </div>
                     ))}
                   </div>
-                ) : <div className="py-20 text-center opacity-20 italic">No archive data found.</div>}
+                ) : <div className="py-20 text-center opacity-20 italic font-black uppercase tracking-widest">Archive Empty</div>}
               </div>
             )}
           </main>
 
           <footer className="border-t border-white/5 py-8 mt-12 text-center">
-             <p className="text-[9px] uppercase tracking-[0.4em] text-slate-600 font-bold">Smart Prompt Generator v3.6 // Developed by Jeck // Accurate Quad-Engine</p>
+             <p className="text-[9px] uppercase tracking-[0.4em] text-slate-600 font-bold">Smart Prompt Generator v3.6 // Developed by Jeck // Accuracy Quad-Engine</p>
           </footer>
         </div>
       );
