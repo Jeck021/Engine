@@ -44,10 +44,6 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
     
-    /**
-     * Optimized Icon Component for Browser Compatibility
-     * Ensures icons render correctly without React-specific library conflicts
-     */
     const Icon = ({ name, size = 16, className = "" }) => {
       const containerRef = useRef(null);
 
@@ -79,58 +75,58 @@
     const STYLES = {
       corona: {
         name: "Corona Renderer",
-        promptSuffix: "Chaos Corona Renderer style, architectural visualization, global illumination, soft natural lighting, realistic materials, photorealistic, 8k resolution, lightmix."
+        promptSuffix: "Chaos Corona Renderer style, architectural visualization, photorealistic, 8k resolution, lightmix."
       },
       unreal: {
         name: "Unreal Engine 5",
-        promptSuffix: "Unreal Engine 5 render, cinematic lighting, Lumen, Nanite detail, volumetric lighting, hyper-realistic, ray-traced reflections, 8k, digital art."
+        promptSuffix: "Unreal Engine 5 render, cinematic lighting, Lumen, Nanite detail, volumetric lighting, hyper-realistic, 8k."
       },
       midjourney: {
         name: "Midjourney Style",
-        promptSuffix: "Midjourney v6 style, dramatic lighting, high aesthetic, vibrant colors, detailed composition, professional photography, cinematic, sharp focus."
+        promptSuffix: "Midjourney v6 style, dramatic lighting, high aesthetic, vibrant colors, cinematic, sharp focus."
       },
       flux: {
         name: "Flux Engine",
-        promptSuffix: "Flux model style, hyper-realistic photography, intricate textures, masterpiece, high precision, 16k resolution, sharp focus, highly detailed materials."
+        promptSuffix: "Flux model style, hyper-realistic photography, intricate textures, high precision, 16k resolution."
       },
       kling: {
         name: "Kling Cinematic",
-        promptSuffix: "Kling AI style, cinematic film look, 35mm film grain, high dynamic range, depth of field, lifelike motion blur effects, professional cinematography."
+        promptSuffix: "Kling AI style, cinematic film look, 35mm film grain, depth of field, professional cinematography."
       },
       leonardo: {
         name: "Leonardo AI",
-        promptSuffix: "Leonardo AI style, PhotoReal, fine-tuned detail, artistic composition, vibrant contrast, high-end digital art look, sharp details, polished finish."
+        promptSuffix: "Leonardo AI style, PhotoReal, fine-tuned detail, high-end digital art look, sharp details."
       },
       sdxl: {
         name: "SDXL / Free",
-        promptSuffix: "Stable Diffusion XL 1.0 style, highly detailed, sharp edges, clean lines, realistic lighting, 4k, digital masterpiece, photorealism."
+        promptSuffix: "Stable Diffusion XL 1.0 style, highly detailed, sharp edges, clean lines, realistic lighting."
       }
     };
 
     const SHOT_TYPES = {
       front: {
         name: "Front View",
-        suffix: "straight-on front view, direct eye-level perspective, symmetrical architectural photography, facade alignment, balanced centered composition."
+        suffix: "straight-on front view, symmetrical composition, facade alignment."
       },
       wide: {
         name: "Wide Angle",
-        suffix: "ultra-wide angle lens, 16mm lens, expansive architectural view, wide field of view, immersive space."
+        suffix: "ultra-wide angle lens, 16mm lens, expansive architectural view."
       },
       macro: {
         name: "Macro / Close-up",
-        suffix: "extreme close-up shot, macro photography, shallow depth of field, focus on texture and material detail, 85mm lens."
+        suffix: "extreme close-up shot, macro photography, shallow depth of field, 85mm lens."
       },
       left_perspective: {
         name: "Left Perspective",
-        suffix: "architectural shot from the left side, left-side perspective, 45-degree angle from the left, corner view, cinematic asymmetrical framing."
+        suffix: "architectural shot from the left side, 45-degree angle from the left."
       },
       right_perspective: {
         name: "Right Perspective",
-        suffix: "architectural shot from the right side, right-side perspective, 45-degree angle from the right, corner view, cinematic asymmetrical framing."
+        suffix: "architectural shot from the right side, 45-degree angle from the right."
       },
       aerial: {
         name: "Aerial View",
-        suffix: "drone photography, bird's eye view, high angle, sprawling site plan view, aerial architectural shot."
+        suffix: "drone photography, bird's eye view, high angle aerial shot."
       }
     };
 
@@ -141,30 +137,34 @@
       },
       spring: {
         name: "Spring",
-        suffix: "spring season, blooming flowers, fresh green grass, blossoming trees, soft warm sunlight, clear sky."
+        suffix: "spring season, blooming flowers, blossoming trees, soft warm sunlight."
       },
       summer: {
         name: "Summer",
-        suffix: "harsh summer sun, high contrast shadows, clear blue sky, lush deep green foliage, heat haze, bright tropical atmosphere."
+        suffix: "harsh summer sun, high contrast shadows, deep green foliage."
       },
       autumn: {
         name: "Autumn",
-        suffix: "autumn season, golden brown and orange leaves, falling leaves, warm sunset lighting, crisp air."
+        suffix: "autumn season, golden leaves, warm sunset lighting, crisp air."
       },
       winter: {
         name: "Winter",
-        suffix: "winter season, heavy snow, frosted surfaces, cold blue lighting, overcast sky, snowy trees."
+        suffix: "winter season, heavy snow, frosted surfaces, cold blue lighting."
       },
       monsoon: {
         name: "Monsoon",
-        suffix: "rainy season, heavy rain, wet surfaces, dark moody clouds, puddles with reflections, atmospheric mist."
+        suffix: "rainy season, heavy rain, wet surfaces, moody clouds, reflections."
       }
     };
 
     const App = () => {
       const [selectedImage, setSelectedImage] = useState(null);
       const [previewUrl, setPreviewUrl] = useState(null);
-      const [prompt, setPrompt] = useState("");
+      
+      // Master Prompt States
+      const [prompt, setPrompt] = useState("Modern architectural design");
+      const [userSubject, setUserSubject] = useState("Modern architectural design");
+      
       const [generatedImages, setGeneratedImages] = useState([]);
       const [focusedImageIdx, setFocusedImageIdx] = useState(0);
       const [isGenerating, setIsGenerating] = useState(false);
@@ -185,17 +185,36 @@
       
       const audioRef = useRef(null);
 
+      /**
+       * AUTOMATIC CONNECTIVITY LOGIC:
+       * Syncs Render Engine, Season, and the primary Camera Shot to the Master Prompt.
+       */
+      useEffect(() => {
+        const styleText = STYLES[activeStyle]?.promptSuffix || "";
+        const seasonText = SEASONS[activeSeason]?.suffix || "";
+        // Use the first active shot as the primary display shot in the prompt
+        const shotText = activeShots.length > 0 ? SHOT_TYPES[activeShots[0]]?.suffix : "";
+        
+        let composite = userSubject;
+        if (shotText) composite += `, ${shotText}`;
+        if (seasonText) composite += `, ${seasonText}`;
+        if (styleText) composite += `, ${styleText}`;
+        
+        setPrompt(composite);
+      }, [activeStyle, activeSeason, activeShots, userSubject]);
+
       const fetchWithRetry = async (url, options, retries = 5) => {
         for (let i = 0; i < retries; i++) {
           try {
             const response = await fetch(url, options);
             if (response.ok) return await response.json();
+            const errBody = await response.json();
+            throw new Error(errBody.error?.message || "API Error");
           } catch (err) {
             if (i === retries - 1) throw err;
           }
           await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
         }
-        throw new Error("Maximum retries exceeded");
       };
 
       const toggleShot = (key) => {
@@ -244,13 +263,10 @@
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         const rect = canvas.getBoundingClientRect();
-        
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        
         const x = clientX - rect.left;
         const y = clientY - rect.top;
-
         ctx.lineWidth = brushSize;
         ctx.lineTo(x, y);
         ctx.stroke();
@@ -288,12 +304,12 @@
       };
 
       const refinePrompt = async () => {
-        if (!prompt) { setStatus("Enter a basic prompt first ✨"); return; }
+        if (!prompt) { setStatus("Enter a prompt first ✨"); return; }
         setIsRefining(true);
         setStatus("✨ Magic Refiner is active...");
         try {
-          const systemPrompt = "You are an expert architectural visualization prompt engineer.";
-          const userQuery = `Refine this prompt for a ${STYLES[activeStyle].name} render in ${SEASONS[activeSeason].name} season: ${prompt}`;
+          const systemPrompt = "You are an expert architectural visualization prompt engineer. Output ONLY the refined prompt text.";
+          const userQuery = `Refine this prompt for a ${STYLES[activeStyle].name} render: ${prompt}`;
           const result = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -303,9 +319,12 @@
             })
           });
           const refinedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (refinedText) { setPrompt(refinedText.trim()); setStatus("✨ Prompt refined!"); }
+          if (refinedText) { 
+            setUserSubject(refinedText.trim());
+            setStatus("✨ Prompt refined!"); 
+          }
         } catch (error) { 
-          setStatus("Failed to refine prompt."); 
+          setStatus("Refinement error."); 
         } finally { 
           setIsRefining(false); 
         }
@@ -319,29 +338,21 @@
         setGeneratedImages([null, null, null, null]); 
         setFocusedImageIdx(0);
         
-        const seasonSuffix = SEASONS[activeSeason].suffix;
-        const styleSuffix = STYLES[activeStyle].promptSuffix;
         const maskBase64 = isInpaintMode ? getMaskData() : null;
 
-        /**
-         * Fast Rendering Optimization + High Structural Accuracy:
-         * Automatically binds choices (Style, Season, Shot) to the master prompt.
-         */
         const processVariation = async (idx) => {
-          // Assign each variation one of the 4 required shots
+          // Cycle through the selected camera shots for the 4 slots
           const shotKey = activeShots[idx % activeShots.length];
           const shotSuffix = SHOT_TYPES[shotKey].suffix;
-          
-          // Connect all choices to the master prompt
-          const currentFullPrompt = `${prompt}, ${seasonSuffix}, ${shotSuffix}, ${styleSuffix}`;
+          const currentFullPrompt = `${prompt}, ${shotSuffix}`;
           
           try {
             let b64 = null;
             if (selectedImage) {
               const parts = [
                 { text: isInpaintMode 
-                    ? `STRICT INSTRUCTION: Only modify masked area. Maintain 100% architectural accuracy for the rest. Application: ${currentFullPrompt}. Season: ${SEASONS[activeSeason].name}. Style: ${STYLES[activeStyle].name}.`
-                    : `STRICT INSTRUCTION: Maintain exact architectural form, layout, and building geometry of original image. Apply style: ${currentFullPrompt}. Perspective: ${SHOT_TYPES[shotKey].name}. Engine: ${STYLES[activeStyle].name}.` 
+                    ? `STRICT INSTRUCTION: Only modify masked area. Maintain 100% structural accuracy for the rest. Apply: ${currentFullPrompt}. Season: ${SEASONS[activeSeason].name}. Style: ${STYLES[activeStyle].name}.`
+                    : `STRICT INSTRUCTION: Maintain exact architectural form, layout, and building geometry of the provided image. DO NOT change the building shape. Apply: ${currentFullPrompt}. Perspective: ${SHOT_TYPES[shotKey].name}. Engine: ${STYLES[activeStyle].name}.` 
                 },
                 { inlineData: { mimeType: "image/png", data: selectedImage } }
               ];
@@ -391,7 +402,7 @@
           ]);
           setStatus("Quad-rendering complete!");
         } catch (error) { 
-          setStatus("Rendering interrupted."); 
+          setStatus("Rendering failed. Verify API Key."); 
         } finally { 
           setIsGenerating(false); 
         }
@@ -484,7 +495,7 @@
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Camera Shot Type</label>
                          </div>
                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${activeShots.length < 4 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-                            {String(activeShots.length)}/4 Selected
+                            {String(activeShots.length)}/4
                          </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -528,7 +539,17 @@
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Master Prompt</label>
                         <button onClick={refinePrompt} disabled={isRefining || !prompt} className="text-[9px] flex items-center gap-1 text-blue-400 disabled:opacity-30 font-bold uppercase"><Icon name="Wand2" className="w-3 h-3" /> Magic Refine</button>
                       </div>
-                      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={isInpaintMode ? "Replacement..." : "Modern architecture..."} className="w-full h-28 bg-slate-800 rounded-xl p-4 text-xs focus:ring-2 focus:ring-blue-500/50 outline-none resize-none border border-white/5" />
+                      <textarea 
+                        value={prompt} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPrompt(val);
+                          // Heuristic: update userSubject based on edit
+                          const parts = val.split(',');
+                          if (parts.length > 0) setUserSubject(parts[0].trim());
+                        }} 
+                        className="w-full h-28 bg-slate-800 rounded-xl p-4 text-xs focus:ring-2 focus:ring-blue-500/50 outline-none resize-none border border-white/5" 
+                      />
                     </div>
 
                     <button onClick={handleProcess} disabled={isGenerating || activeShots.length < 4} className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-3 shadow-2xl ${isInpaintMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-600 hover:bg-blue-500'} disabled:opacity-50`}>
